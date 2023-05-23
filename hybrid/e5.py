@@ -1,11 +1,9 @@
+import torch.nn.functional as F
+from torch import Tensor
+
 from transformers import AutoTokenizer, AutoModel
 tokenizer = AutoTokenizer.from_pretrained("intfloat/e5-base-v2")
 model = AutoModel.from_pretrained("intfloat/e5-base-v2")
-
-import torch.nn.functional as F
-from torch import Tensor
-from transformers import AutoTokenizer, AutoModel
-
 
 def average_pool(last_hidden_states: Tensor,
                  attention_mask: Tensor) -> Tensor:
