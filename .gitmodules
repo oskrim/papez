@@ -1,0 +1,3 @@
+[submodule "hybrid/terrier-prf"]
+	path = hybrid/terrier-prf
+	url = git@github.com:terrierteam/terrier-prf.git
