@@ -1,17 +1,17 @@
-# query(documents) = relevance = < q, d > where q in R^N and d in R^N
-# lexical models use sparse vectors R^V (V = vocabulary size)
-# all entries are zero except for the words that appear in the query or document
-# often some kind of expansion (e.g. PRF) is used to increase the size of the vocabulary
-# V is still sparse
-# neural models use dense vectors R^E (E = embedding size)
-# cons here are large training data requirements and inexact matches
-#
 import os
 import json
-from e5 import e5_embeddings
-
+import argparse
 import numpy as np
+from e5 import e5_embeddings
 from datasets import load_dataset
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--model', type=str, default='combination', help='neural, lexical or combination model')
+parser.add_argument('-k', type=int, default=60, help='k for RRF')
+args = parser.parse_args()
+k = args.k
+model = args.model
+
 data = load_dataset("ms_marco", "v2.1", split='validation[:1%]')
 data = data.filter(lambda x: sum(x['passages']['is_selected']) == 1)
 passages = data['passages']
@@ -25,9 +25,6 @@ QID = data['query_id']
 Q_emb = []
 D_emb = []
 if os.getenv("COMPUTE"):
-  # process in batches of 100
-  # for i in range(0, len(Q), 100):
-  # for i in range(len(Q)):
   for i in range(len(Q)):
     print(i)
     D_emb.append(e5_embeddings([f"passage: #{x}" for x in D[i]]))
@@ -41,12 +38,9 @@ else:
 
 # test the model
 def test():
-  # Candidate file sould contain lines in the following format:
-  fil = open('candidate.txt', 'w')
-
   mrr = 0
   answers = []
-  for i in range(min(len(Q), 10)):
+  for i in range(len(Q)):
     N = len(D[i])
     avgdl = sum([len(d.split()) for d in D[i]]) / N
     scores = [rrf(i, j, N, avgdl) for j in range(N)]
@@ -59,7 +53,7 @@ def test():
     for j, (_score, k, _d) in enumerate(scores):
       if rr == 0 and k == R[i]:
         rr = 1 / (j + 1)
-      fil.write(str(QID[i]) + '\t' + str(k) + '\t' + str(j) + '\n')
+        break
     mrr += rr
 
   print ('MRR: ' + str(mrr / len(Q)))
@@ -72,10 +66,12 @@ def rrf(i, j, N, avgdl):
   d_emb = D_emb[i][j]
   neural = np.dot(q_emb, d_emb) / (np.linalg.norm(q_emb) * np.linalg.norm(d_emb))
 
-  k = 60
-  # return 1 / (k + lexical) + 1 / (k + neural)
-  return 1 / (k + lexical)
-  # return 1 / (k + neural)
+  if model == "neural":
+    return 1 / (k + neural)
+  elif model == "lexical":
+    return 1 / (k + lexical)
+  else:
+    return 1 / (k + lexical) + 1 / (k + neural)
 
 
 # lexical model is BM25 (should maybe just use Terrier)
