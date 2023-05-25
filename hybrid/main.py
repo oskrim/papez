@@ -2,17 +2,21 @@ import os
 import json
 import argparse
 import numpy as np
+np.random.seed(42)
+
 from e5 import e5_embeddings
 from datasets import load_dataset
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, default='combination', help='neural, lexical or combination model')
 parser.add_argument('-k', type=int, default=60, help='k for RRF')
+parser.add_argument('--fraction', type=float, default=0.01, help='fraction of data to use')
 args = parser.parse_args()
 k = args.k
 model = args.model
+percent = int(args.fraction * 100)
 
-data = load_dataset("ms_marco", "v2.1", split='validation[:1%]')
+data = load_dataset("ms_marco", "v2.1", split=f"validation[:{percent}%]")
 data = data.filter(lambda x: sum(x['passages']['is_selected']) == 1)
 passages = data['passages']
 
@@ -21,6 +25,8 @@ D = [x['passage_text'] for x in passages]
 D_flat = [d for doc in D for d in doc]
 Q = data['query']
 QID = data['query_id']
+
+print(f"Using {percent}% of the data, dataset size: {len(Q)}")
 
 Q_emb = []
 D_emb = []
@@ -59,19 +65,25 @@ def test():
   print ('MRR: ' + str(mrr / len(Q)))
 
 # combine the two models using RRF
-def rrf(i, j, N, avgdl):
-  lexical = bm25(i, j, N, avgdl)
+def rrf(*args):
+  if model == "random":
+    return 1 / (k + np.random.rand())
+  elif model == "neural":
+    return 1 / (k + neural(*args))
+  elif model == "lexical":
+    return 1 / (k + lexical(*args))
+  else:
+    return 1 / (k + lexical(*args)) + 1 / (k + neural(*args))
 
+
+def neural(i, j, N, avgdl):
   q_emb = Q_emb[i]
   d_emb = D_emb[i][j]
-  neural = np.dot(q_emb, d_emb) / (np.linalg.norm(q_emb) * np.linalg.norm(d_emb))
+  return np.dot(q_emb, d_emb) / (np.linalg.norm(q_emb) * np.linalg.norm(d_emb))
 
-  if model == "neural":
-    return 1 / (k + neural)
-  elif model == "lexical":
-    return 1 / (k + lexical)
-  else:
-    return 1 / (k + lexical) + 1 / (k + neural)
+
+def lexical(i, j, N, avgdl):
+  return bm25(i, j, N, avgdl)
 
 
 # lexical model is BM25 (should maybe just use Terrier)

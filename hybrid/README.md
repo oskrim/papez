@@ -23,8 +23,24 @@ python3 main.py --model neural
 
 ## Results
 
-Currently with commit `4c377f2`, results are as follows. Mean reciprocal rank (MRR) is used for evaluation
+### Passages
+
+Currently with commit `4c377f2`, results are as follows. Mean average precision (MAP) is used for evaluation
+
+First 1% of dataset
 ```
-[neural]  MRR: 0.643283397888661
-[lexical] MRR: 0.37455950482266237
-[both]    MRR: 0.38575320877952407
+[neural]  MAP: 0.643283397888661
+[both]    MAP: 0.38575320877952407
+[lexical] MAP: 0.37455950482266237
+[random]  MAP: 0.3033065618591935
+```
+
+First 5% of dataset
+```
+[neural]  MAP: 0.6611335781273242
+[both]    MAP: 0.42146234087012063
+[lexical] MAP: 0.4041820352084331
+[random]  MAP: 0.28606920943669834
+```
+
+`[random]` denotes a model that assigns a relevancy score randomly from the unit interval for each passage
