@@ -6,15 +6,18 @@ np.random.seed(42)
 
 from e5 import e5_embeddings
 from datasets import load_dataset
+from pinecone.bm25_encode import BM25Encoder
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', type=str, default='combination', help='neural, lexical or combination model')
+parser.add_argument('--model', type=str, default='both', help='neural, lexical or combination model')
+parser.add_argument('--bm25_model', type=str, default='python', help='python or pinecone')
 parser.add_argument('-k', type=int, default=60, help='k for RRF')
 parser.add_argument('--fraction', type=float, default=0.01, help='fraction of data to use')
 args = parser.parse_args()
 k = args.k
 model = args.model
 percent = int(args.fraction * 100)
+bm25_model = args.bm25_model
 
 data = load_dataset("ms_marco", "v2.1", split=f"validation[:{percent}%]")
 data = data.filter(lambda x: sum(x['passages']['is_selected']) == 1)
@@ -25,6 +28,16 @@ D = [x['passage_text'] for x in passages]
 D_flat = [d for doc in D for d in doc]
 Q = data['query']
 QID = data['query_id']
+
+b = 0.5
+k1 = 1.2
+
+pinecone_bm25 = None
+pincone_queries = None
+if bm25_model == "pinecone":
+  pinecone_bm25 = BM25Encoder(b=b, k1=k1)
+  pinecone_bm25.fit(D_flat)
+  pinecone_queries = pinecone_bm25.encode_queries(Q)
 
 print(f"Using {percent}% of the data, dataset size: {len(Q)}")
 
@@ -83,12 +96,22 @@ def neural(i, j, N, avgdl):
 
 
 def lexical(i, j, N, avgdl):
+  if bm25_model == "pinecone":
+    return sparse_dot(pinecone_bm25.encode_documents(D[i][j]), pinecone_queries[i])
   return bm25(i, j, N, avgdl)
 
 
-# lexical model is BM25 (should maybe just use Terrier)
-b = 0.5
-k1 = 1.2
+def sparse_dot(u, v):
+  u_ptr = get_pointers(u)
+  v_ptr = get_pointers(v)
+  dot = sum([u_ptr[i] * v_ptr[i] for i in u_ptr if i in v_ptr])
+  return dot / (np.linalg.norm(u["values"]) * np.linalg.norm(v["values"]))
+
+
+def get_pointers(v):
+  return {v["indices"][i]: v["values"][i] for i in range(len(v["indices"]))}
+
+
 def bm25(i, j, N, avgdl):
   q = Q[i].split()
   d = D[i][j].split()
@@ -114,6 +137,10 @@ def n(q_i):
   ret = sum([1 for d in D if q_i in d])
   n_memo[q_i] = ret
   return ret
+
+
+def normalized_dot(u, v):
+  return np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))
 
 
 if __name__ == '__main__':
