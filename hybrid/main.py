@@ -1,12 +1,14 @@
 import os
 import json
 import argparse
+from collections import Counter
 import numpy as np
 np.random.seed(42)
 
 from e5 import e5_embeddings
 from datasets import load_dataset
 from pinecone.bm25_encode import BM25Encoder
+from pinecone.bm25_token import BM25Tokenizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, default='both', help='neural, lexical or combination model')
@@ -29,17 +31,27 @@ D_flat = [d for doc in D for d in doc]
 Q = data['query']
 QID = data['query_id']
 
-N = len(D_flat)
-avgdl = sum([len(d.split()) for d in D_flat]) / len(D_flat)
 b = 0.5
 k1 = 1.2
+N = len(D_flat)
 
+doc_freq = None
+avgdl = None
 pinecone_bm25 = None
 pincone_queries = None
+pinecone_tokenizer = None
 if bm25_model == "pinecone":
   pinecone_bm25 = BM25Encoder(b=b, k1=k1)
   pinecone_bm25.fit(D_flat)
   pinecone_queries = pinecone_bm25.encode_queries(Q)
+else:
+  pinecone_tokenizer = BM25Tokenizer()
+  D_flat = [pinecone_tokenizer(d) for d in D_flat]
+  avgdl = sum([len(d) for d in D_flat]) / N
+  doc_freq_counter = Counter()
+  for d in D_flat:
+    doc_freq_counter.update(d)
+  doc_freq = dict(doc_freq_counter)
 
 print(f"Using {percent}% of the data, dataset size: {len(Q)}")
 
@@ -62,13 +74,13 @@ def test():
   mrr = 0
   answers = []
   for i in range(len(Q)):
-    # sort by score
+    # sort documents by score
     scores = [rrf(i, j) for j in range(len(D[i]))]
-    scores = sorted(zip(scores, range(len(D[i])), D[i]))
+    scores = sorted(zip(scores, range(len(D[i]))))
 
     # compute reciprocal rank, save results to file
     rr = 0
-    for j, (_score, k, _d) in enumerate(scores):
+    for j, (_score, k) in enumerate(scores):
       if rr == 0 and k == R[i]:
         rr = 1 / (j + 1)
         break
@@ -85,7 +97,9 @@ def rrf(*args):
   elif model == "lexical":
     return 1 / (k + lexical(*args))
   else:
-    return 1 / (k + lexical(*args)) + 1 / (k + neural(*args))
+    lex = lexical(*args)
+    neur = neural(*args)
+    return 1 / (k + lex) + 1 / (k + neur)
 
 
 def neural(i, j):
@@ -112,13 +126,16 @@ def get_pointers(v):
 
 
 def bm25(i, j):
-  q = Q[i].split()
-  d = D[i][j].split()
+  q = pinecone_tokenizer(Q[i])
+  d = pinecone_tokenizer(D[i][j])
   acc = 0
+  idf_sum = 0
   for k in range(len(q)):
     f_k = f(q[k], d)
-    acc += (k1 + 1) * f_k / (k1 * (1 - b + b * len(d) / avgdl) + f_k) * idf(q[k])
-  return acc
+    idf_factor = idf(q[k])
+    idf_sum += idf_factor
+    acc += (k1 + 1) * f_k / (k1 * (1 - b + b * len(d) / avgdl) + f_k) * idf_factor
+  return acc / idf_sum
 
 
 def f(q_i, d):
@@ -126,7 +143,9 @@ def f(q_i, d):
 
 
 def idf(i):
-  return np.log((N - n(i) + 0.5) / (n(i) + 0.5))
+  # return np.log((N - n(i) + 0.5) / (n(i) + 0.5))
+  tf = doc_freq.get(i, 1)
+  return np.log((N + 1) / (tf + 0.5))
 
 
 n_memo = {}
