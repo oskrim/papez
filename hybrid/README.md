@@ -25,7 +25,7 @@ python3 main.py --model neural
 
 ### Passages
 
-Currently with commit `4c377f2`, results are as follows. Mean average precision (MAP) is used for evaluation
+Mean average precision (MAP) is used for evaluation
 
 First 1% of dataset
 ```
