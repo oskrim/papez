@@ -145,6 +145,7 @@ def f(q_i, d):
 def idf(i):
   # return np.log((N - n(i) + 0.5) / (n(i) + 0.5))
   tf = doc_freq.get(i, 1)
+  # return np.log((N - tf + 0.5) / (tf + 0.5))
   return np.log((N + 1) / (tf + 0.5))
 
 
