@@ -29,10 +29,12 @@ Currently with commit `4c377f2`, results are as follows. Mean average precision 
 
 First 1% of dataset
 ```
-[neural]  MAP: 0.643283397888661
-[both]    MAP: 0.38575320877952407
-[lexical] MAP: 0.37455950482266237
-[random]  MAP: 0.3033065618591935
+[neural]                  MAP: 0.643283397888661
+[pinecone bm25]           MAP: 0.4529448621553881
+[both]                    MAP: 0.38575320877952407
+[python bm25/single fit]  MAP: 0.3769822282980175
+[python bm25]             MAP: 0.37455950482266237
+[random]                  MAP: 0.3033065618591935
 ```
 
 First 5% of dataset

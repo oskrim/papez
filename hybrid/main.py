@@ -29,6 +29,8 @@ D_flat = [d for doc in D for d in doc]
 Q = data['query']
 QID = data['query_id']
 
+N = len(D_flat)
+avgdl = sum([len(d.split()) for d in D_flat]) / len(D_flat)
 b = 0.5
 k1 = 1.2
 
@@ -60,12 +62,9 @@ def test():
   mrr = 0
   answers = []
   for i in range(len(Q)):
-    N = len(D[i])
-    avgdl = sum([len(d.split()) for d in D[i]]) / N
-    scores = [rrf(i, j, N, avgdl) for j in range(N)]
-
     # sort by score
-    scores = sorted(zip(scores, range(N), D[i]))
+    scores = [rrf(i, j) for j in range(len(D[i]))]
+    scores = sorted(zip(scores, range(len(D[i])), D[i]))
 
     # compute reciprocal rank, save results to file
     rr = 0
@@ -89,16 +88,16 @@ def rrf(*args):
     return 1 / (k + lexical(*args)) + 1 / (k + neural(*args))
 
 
-def neural(i, j, N, avgdl):
+def neural(i, j):
   q_emb = Q_emb[i]
   d_emb = D_emb[i][j]
   return np.dot(q_emb, d_emb) / (np.linalg.norm(q_emb) * np.linalg.norm(d_emb))
 
 
-def lexical(i, j, N, avgdl):
+def lexical(i, j):
   if bm25_model == "pinecone":
     return sparse_dot(pinecone_bm25.encode_documents(D[i][j]), pinecone_queries[i])
-  return bm25(i, j, N, avgdl)
+  return bm25(i, j)
 
 
 def sparse_dot(u, v):
@@ -112,13 +111,13 @@ def get_pointers(v):
   return {v["indices"][i]: v["values"][i] for i in range(len(v["indices"]))}
 
 
-def bm25(i, j, N, avgdl):
+def bm25(i, j):
   q = Q[i].split()
   d = D[i][j].split()
   acc = 0
   for k in range(len(q)):
     f_k = f(q[k], d)
-    acc += (k1 + 1) * f_k / (k1 * (1 - b + b * len(d) / avgdl) + f_k) * idf(q[k], N)
+    acc += (k1 + 1) * f_k / (k1 * (1 - b + b * len(d) / avgdl) + f_k) * idf(q[k])
   return acc
 
 
@@ -126,7 +125,7 @@ def f(q_i, d):
   return sum([1 for w in d if w == q_i])
 
 
-def idf(i, N):
+def idf(i):
   return np.log((N - n(i) + 0.5) / (n(i) + 0.5))
 
 

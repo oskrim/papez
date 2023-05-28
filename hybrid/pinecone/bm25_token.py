@@ -19,11 +19,11 @@ except LookupError:
 class BM25Tokenizer:
     def __init__(
         self,
-        lower_case      ,
-        remove_punctuation      ,
-        remove_stopwords      ,
-        stem      ,
-        language     ,
+        lower_case = True,
+        remove_punctuation = True,
+        remove_stopwords = True,
+        stem = True,
+        language = "english",
     ):
         self.lower_case = lower_case
         self.remove_punctuation = remove_punctuation
