@@ -178,11 +178,11 @@ class Simple(object):
   def parameters(self):
     return [self.w, self.b]
 
-# mlp = MLP(2, 3, 1)
-mlp = Neuron(2)
+mlp = MLP(2, 3, 1)
+# mlp = Neuron(2)
 
-for i in range(300):
-  ypred = [mlp(x) for x in xs]
+for i in range(3000):
+  ypred = [mlp(x)[0] for x in xs]
   loss = sum(((y - yhat)**Value(2.0) for y, yhat in zip(ys, ypred)), Value(0.0))
 
   print("%.4f" % loss.data, end=' ')
@@ -192,7 +192,7 @@ for i in range(300):
 
   loss.backward()
   for p in mlp.parameters():
-    p.data -= 0.3 * p.grad() * 100 / (i + 100)
+    p.data -= 0.1 * p.grad()
   loss.zero_grad()
 
 assert (Value(5.0) + Value(4.0)).data == 9.0
