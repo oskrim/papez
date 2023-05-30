@@ -39,14 +39,16 @@ class Value(object):
     out = Value(self.data ** other.data, children=(self, other), op='**')
     return out
 
+  def __truediv__(self, other):
+    if isinstance(other, (int, float)):
+      other = Value(other)
+    return self * other ** Value(-1.0)
+
   def __radd__(self, other):
     return self + other
 
   def __rmul__(self, other):
     return self * other
-
-  def __rpow__(self, other):
-    return other**self
 
   def __sub__(self, other):
     return self + (-other)
@@ -54,8 +56,8 @@ class Value(object):
   def __neg__(self):
     return self * Value(-1.0)
 
-  def __truediv__(self, other):
-    return self * other**Value(-1.0)
+  def __rtruediv__(self, other):
+    return other * self ** Value(-1.0)
 
   def exp(self):
     out = Value(np.exp(self.data), children=(self,), op='exp')
@@ -149,8 +151,6 @@ class MLP(object):
 
 
 xs = [
-  # Value(1.0),
-  # Value(2.0),
   [Value(1.0), Value(1.0)],
   [Value(1.0), Value(1.0)],
   [Value(-1.0), Value(3.0)],
@@ -178,22 +178,25 @@ class Simple(object):
   def parameters(self):
     return [self.w, self.b]
 
-mlp = MLP(2, 3, 1)
-# mlp = Neuron(2)
 
-for i in range(3000):
-  ypred = [mlp(x)[0] for x in xs]
-  loss = sum(((y - yhat)**Value(2.0) for y, yhat in zip(ys, ypred)), Value(0.0))
+def train():
+  # mlp = Neuron(2)
+  mlp = MLP(2, 3, 1)
 
-  print("%.4f" % loss.data, end=' ')
-  for yhat in ypred:
-    print("%.4f" % yhat.data, end=' ')
-  print()
+  for i in range(3000):
+    ypred = [mlp(x)[0] for x in xs]
+    loss = sum(((y - yhat)**Value(2.0) for y, yhat in zip(ys, ypred)), Value(0.0))
 
-  loss.backward()
-  for p in mlp.parameters():
-    p.data -= 0.1 * p.grad()
-  loss.zero_grad()
+    print("%.4f" % loss.data, end=' ')
+    for yhat in ypred:
+      print("%.4f" % yhat.data, end=' ')
+    print()
+
+    loss.backward()
+    for p in mlp.parameters():
+      p.data -= 0.1 * p.grad()
+    loss.zero_grad()
+
 
 assert (Value(5.0) + Value(4.0)).data == 9.0
 assert (Value(5.0) * Value(4.0)).data == 20.0
@@ -227,21 +230,19 @@ def lol():
   assert a.grad() == 6.0
 
 
-lol()
-
-# a = Value(-4.0)
-# b = Value(2.0)
-# c = a + b
-# d = a * b + b**3.0
-# c += c + 1.0
-# c += 1.0 + c + (-a)
-# d += d * 2.0 + (b + a).relu()
-# d += 3.0 * d + (b - a).relu()
-# e = c - d
-# f = e**2.0
-# g = f / 2.0
-# g += 10.0 / f
-# print(f'{g.data:.4f}')
-# g.backward()
-# print(f'{a.grad():.4f}')
-# print(f'{b.grad():.4f}')
+a = Value(-4.0)
+b = Value(2.0)
+c = a + b
+d = a * b + b**3.0
+c += c + 1.0
+c += 1.0 + c + (-a)
+d += d * 2.0 + (b + a).relu()
+d += 3.0 * d + (b - a).relu()
+e = c - d
+f = e**2.0
+g = f / 2.0
+g += 10.0 / f
+print(f'{g.data:.4f}')
+g.backward()
+print(f'{a.grad():.4f}')
+print(f'{b.grad():.4f}')
