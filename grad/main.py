@@ -88,7 +88,7 @@ class Value(object):
       case 'relu':
         self._children[0]._grad += self.grad() * (self._children[0].data > 0)
       case 'tanh':
-        self._children[0]._grad += self.grad() * (1 - self._children[0].data ** 2)
+        self._children[0]._grad += self.grad() * (1 - self.data ** 2)
       case 'exp':
         self._children[0]._grad += self.grad() * np.exp(self._children[0].data)
       case _:
@@ -149,21 +149,21 @@ class MLP(object):
 
 
 xs = [
-  Value(1.0),
-  # [Value(1.0), Value(2.0)],
-  # [Value(1.0), Value(1.0)],
-  # [Value(-1.0), Value(3.0)],
-  # [Value(1.0), Value(5.0)],
+  # Value(1.0),
+  # Value(2.0),
+  [Value(1.0), Value(1.0)],
+  [Value(1.0), Value(1.0)],
+  [Value(-1.0), Value(3.0)],
+  [Value(1.0), Value(5.0)],
 ]
 
 ys = [
   Value(0.5),
-  # Value(-1.0),
-  # Value(-1.0),
-  # Value(-1.0),
+  Value(0.5),
+  Value(-0.5),
+  Value(-1.0),
 ]
 
-# mlp = MLP(2, 3, 1)
 class Simple(object):
   def __init__(self):
     self.w = Value(np.random.uniform(-1, 1))
@@ -173,19 +173,26 @@ class Simple(object):
     return self.forward(x)
 
   def forward(self, x):
-    return self.w * x + self.b
+    return (self.w * x + self.b).tanh()
 
   def parameters(self):
     return [self.w, self.b]
-mlp = Simple()
 
-for _ in range(30):
+# mlp = MLP(2, 3, 1)
+mlp = Neuron(2)
+
+for i in range(300):
   ypred = [mlp(x) for x in xs]
   loss = sum(((y - yhat)**Value(2.0) for y, yhat in zip(ys, ypred)), Value(0.0))
-  print("%.4f %.4f" % (loss.data, [y.data for y in ypred][0]))
+
+  print("%.4f" % loss.data, end=' ')
+  for yhat in ypred:
+    print("%.4f" % yhat.data, end=' ')
+  print()
+
   loss.backward()
   for p in mlp.parameters():
-    p.data -= 0.03 * p.grad()
+    p.data -= 0.3 * p.grad() * 100 / (i + 100)
   loss.zero_grad()
 
 assert (Value(5.0) + Value(4.0)).data == 9.0
