@@ -208,25 +208,6 @@ assert one.grad() == 3.0
 assert two.grad() == 3.0
 assert three.grad() == 12.0
 
-
-def lol():
-  a = Value(2.0)
-  b = Value(-3.0)
-  e = a * b
-  c = Value(10.0)
-  f = Value(-2.0)
-  d = c + e
-  L = d * f
-  L.backward()
-  assert L.data == -8.0
-  assert f.grad() == 4.0
-  assert d.grad() == -2.0
-  assert c.grad() == -2.0
-  assert e.grad() == -2.0
-  assert b.grad() == -4.0
-  assert a.grad() == 6.0
-
-
 a = Value(-4.0)
 b = Value(2.0)
 c = a + b
