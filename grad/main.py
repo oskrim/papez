@@ -97,6 +97,7 @@ class Value(object):
   def backward(self):
     nodes = []
     visited = set()
+
     def build_graph(node):
       if node not in visited:
         visited.add(node)
@@ -104,6 +105,7 @@ class Value(object):
           build_graph(child)
         nodes.append(node)
     build_graph(self)
+
     self._grad = 1.0
     for child in nodes[::-1]:
       child._backward()
