@@ -174,20 +174,6 @@ ys = [
   Value(-1.0),
 ]
 
-class Simple(object):
-  def __init__(self):
-    self.w = Value(np.random.uniform(-1, 1))
-    self.b = Value(np.random.uniform(-1, 1))
-
-  def __call__(self, x):
-    return self.forward(x)
-
-  def forward(self, x):
-    return (self.w * x + self.b).tanh()
-
-  def parameters(self):
-    return [self.w, self.b]
-
 
 def train():
   mlp = MLP(2, 3, 1)
