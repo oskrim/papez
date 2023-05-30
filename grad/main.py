@@ -72,11 +72,9 @@ class Value(object):
     return out
 
   def grad(self):
-    if self._grad == 0.0:
-      self._grad = 1.0
     return self._grad
 
-  def backward(self):
+  def _backward(self):
     match self._op:
       case '+':
         self._children[0]._grad += self.grad()
@@ -88,15 +86,27 @@ class Value(object):
         self._children[0]._grad += self.grad() * self._children[1].data * self.data / self._children[0].data
         self._children[1]._grad += self.grad() * self.data * math.log(math.fabs(self._children[0].data))
       case 'relu':
-        self._children[0]._grad += self.grad() * (self._children[0].data > 0)
+        self._children[0]._grad += self.grad() * (self.data > 0)
       case 'tanh':
         self._children[0]._grad += self.grad() * (1 - self.data ** 2)
       case 'exp':
-        self._children[0]._grad += self.grad() * np.exp(self._children[0].data)
+        self._children[0]._grad += self.grad() * self.data
       case _:
         pass
-    for child in self._children:
-      child.backward()
+
+  def backward(self):
+    nodes = []
+    visited = set()
+    def build_graph(node):
+      if node not in visited:
+        visited.add(node)
+        for child in node._children:
+          build_graph(child)
+        nodes.append(node)
+    build_graph(self)
+    self._grad = 1.0
+    for child in nodes[::-1]:
+      child._backward()
 
   def zero_grad(self):
     self._grad = 0.0
@@ -180,10 +190,9 @@ class Simple(object):
 
 
 def train():
-  # mlp = Neuron(2)
   mlp = MLP(2, 3, 1)
 
-  for i in range(3000):
+  for i in range(300):
     ypred = [mlp(x)[0] for x in xs]
     loss = sum(((y - yhat)**Value(2.0) for y, yhat in zip(ys, ypred)), Value(0.0))
 
@@ -194,8 +203,10 @@ def train():
 
     loss.backward()
     for p in mlp.parameters():
-      p.data -= 0.1 * p.grad()
+      p.data -= 0.3 * p.grad() * 300 / (i + 300)
     loss.zero_grad()
+
+train()
 
 
 assert (Value(5.0) + Value(4.0)).data == 9.0
@@ -240,7 +251,7 @@ d += d * 2.0 + (b + a).relu()
 d += 3.0 * d + (b - a).relu()
 e = c - d
 f = e**2.0
-g = f / 2.0
+g = f / 2
 g += 10.0 / f
 print(f'{g.data:.4f}')
 g.backward()
