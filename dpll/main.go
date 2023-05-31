@@ -33,10 +33,15 @@ func (d *DPLL) removeClauses(literal Literal) {
 
 	// Remove all clauses containing the literal.
 	for _, clause := range d.clauses {
+		skip := false
 		for _, l := range clause.literals {
-			if l == literal {
-				continue
+			if l.value == literal.value && l.variable == literal.variable {
+				skip = true
+				break
 			}
+		}
+		if skip {
+			continue
 		}
 		result[i] = clause
 		i++
@@ -61,13 +66,13 @@ func (d *DPLL) removeNegations(literal Literal) {
 
 // This is an implementation of the Davis-Putnam-Logemann-Loveland (DPLL) algorithm.
 func (d *DPLL) Solve() bool {
-	// If the set of clauses is empty, return true.
-	if len(d.clauses) == 0 {
-		return true
-	}
-
 	// loop enough times
 	for i := 0; i < 10; i++ {
+		// If the set of clauses is empty, return true.
+		if len(d.clauses) == 0 {
+			return true
+		}
+
 		for _, clause := range d.clauses {
 			// If any clause is empty, return false.
 			if len(clause.literals) == 0 {
@@ -82,6 +87,26 @@ func (d *DPLL) Solve() bool {
 				d.removeClauses(clause.literals[0])
 				// Remove all instances of the negation of the literal from all clauses.
 				d.removeNegations(clause.literals[0])
+			}
+		}
+
+		// Pure literal elimination
+		values := make(map[string]bool)
+		both := make(map[string]bool)
+		for _, clause := range d.clauses {
+			for _, literal := range clause.literals {
+				if exist, ok := values[literal.variable]; ok {
+					if exist != literal.value {
+						both[literal.variable] = true
+					}
+				}
+				values[literal.variable] = literal.value
+			}
+		}
+		for variable, value := range values {
+			if _, ok := both[variable]; !ok {
+				d.variables[variable] = value
+				d.removeClauses(Literal{variable, value})
 			}
 		}
 	}
