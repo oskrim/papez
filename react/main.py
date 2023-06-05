@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import requests
 import wikipedia
 import argparse
 import subprocess
@@ -90,25 +89,9 @@ class SimpleWiki:
     self.page = None
 
   def search(self, entity):
-    if self.backend == "requests":
-      response = requests.get(
-          'https://en.wikipedia.org/w/api.php',
-          params={
-              'action': 'query',
-              'format': 'json',
-              'titles': entity,
-              'prop': 'extracts',
-              'exintro': True,
-              'exsentences': 1,
-              'explaintext': True,
-          }
-      ).json()
-      page = next(iter(response['query']['pages'].values()))
-      return page['extract']
-    elif self.backend == "wikipedia":
-      first = wikipedia.search(entity)[0]
-      self.page = wikipedia.summary(first).split(".")
-      return self.page[0]
+    first = wikipedia.search(entity)[0]
+    self.page = wikipedia.summary(first).split(".")
+    return self.page[0]
 
   def lookup(self, string):
     for sentence in self.page:
