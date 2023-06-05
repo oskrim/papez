@@ -7,9 +7,13 @@ import subprocess
 from datasets import load_dataset
 from random import randint
 
+import openai
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--split', type=str, default='validation', help='train, validation or test')
-parser.add_argument('--num_examples', type=int, default=2, help='number of examples in the prompt')
+parser.add_argument('--num_examples', type=int, default=3, help='number of examples in the prompt')
+parser.add_argument('--llm_model', type=str, default="openai", help='openai or llama_cpp')
 args = parser.parse_args()
 
 data = load_dataset("hotpot_qa", "fullwiki", split=args.split)
@@ -101,7 +105,31 @@ class SimpleWiki:
 
 
 def llama_cpp(prompt):
-  return subprocess.check_output(["/Users/oskarimantere/git/llama.cpp/main", "-m", "/Users/oskarimantere/git/llama.cpp/models/ggml-vicuna-7b-1.1-q4_0.bin", "-p", prompt, "-r", "Observation:", "-c", "1024", "-n", "512"])
+  out = subprocess.check_output(["/Users/oskarimantere/git/llama.cpp/main", "-m", "/Users/oskarimantere/git/llama.cpp/models/ggml-vicuna-7b-1.1-q4_0.bin", "-p", prompt, "-r", "Observation:", "-c", "1024", "-n", "512"])
+  return out.decode("utf-8")
+
+
+def openai_prompt(prompt):
+  response = openai.Completion.create(
+    engine="text-davinci-003",
+    prompt=prompt,
+    temperature=0.7,
+    max_tokens=300,
+    top_p=1,
+    frequency_penalty=0,
+    presence_penalty=0,
+    stop=["Observation:"],
+  )
+  return response.choices[0].text
+
+
+def llm_call(prompt):
+  if args.llm_model == "openai":
+    return openai_prompt(prompt)
+  elif args.llm_model == "llama_cpp":
+    return llama_cpp(prompt)
+  else:
+    raise NotImplementedError(f"Model {args.llm_model} not implemented yet")
 
 
 def perform(question):
@@ -117,10 +145,10 @@ def perform(question):
     print(prompt)
 
     # prompt a language model
-    out = llama_cpp(prompt)
-    out = out.decode("utf-8")
+    out = llm_call(prompt)
     print("\nOUTPUT")
     print(out)
+    prompt += out.strip() + "\n"
 
     # find the last line that starts with "Action: "
     action = [x for x in out.split("\n") if x.startswith("Action: ")][-1]
@@ -129,7 +157,10 @@ def perform(question):
     # perform the action
     if action.startswith("Search["):
       entity = action.replace("Search[", "").replace("]", "")
-      prompt += wiki.search(entity) + "\nThought: "
+      prompt += "Observation: " + wiki.search(entity) + "\nThought: "
+    if action.startswith("Lookup["):
+      string = action.replace("Lookup[", "").replace("]", "")
+      prompt += "Observation: " + wiki.lookup(string) + "\nThought: "
     elif action.startswith("Finish["):
       break
     else:
