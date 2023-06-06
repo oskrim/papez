@@ -15,7 +15,7 @@ func TestNoClauses(t *testing.T) {
 	}
 }
 
-func TestUnitSat1(t *testing.T) {
+func TestSat1(t *testing.T) {
 	dpll := NewDPLL()
 	dpll.clauses = append(dpll.clauses, Clause{[]uint{0}})
 	if dpll.Solve() != true {
@@ -32,7 +32,7 @@ func TestUnitSat1(t *testing.T) {
 	}
 }
 
-func TestUnitSat2(t *testing.T) {
+func TestSat2(t *testing.T) {
 	dpll := NewDPLL()
 	dpll.clauses = append(dpll.clauses, Clause{[]uint{1}})
 	if dpll.Solve() != true {
@@ -49,7 +49,7 @@ func TestUnitSat2(t *testing.T) {
 	}
 }
 
-func TestUnitUnsat1(t *testing.T) {
+func TestUnsat1(t *testing.T) {
 	dpll := NewDPLL()
 	dpll.clauses = append(dpll.clauses, Clause{[]uint{0}})
 	dpll.clauses = append(dpll.clauses, Clause{[]uint{1}})
