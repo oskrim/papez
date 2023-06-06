@@ -12,6 +12,15 @@ type Clause struct {
 	// Odd integers are negated literals
 	// Even integers are positive literals
 	literals []uint
+	// TODO: Implement two-watched literals
+	// the two literals that are being watched
+	// are positioned at indices [0, 1] of `literals`
+	// a watch literal can be true or unassigned
+	// when either watch literal is falsified, then
+	// a new watch needs to be found, if cannot be
+	// found then the clause is either a unit clause
+	// (other watch is undef) or a conflict clause
+	// (both watches are false)
 }
 
 type DPLL struct {
@@ -55,6 +64,8 @@ func (dpll *DPLL) RegisterVariables() {
 }
 
 func (dpll *DPLL) SolveInternal() bool {
+	// TODO: Implement unit propagation
+
 	if dpll.AllClausesSatisfied() {
 		debug("SAT with", dpll.trail)
 		return true
