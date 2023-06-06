@@ -48,3 +48,12 @@ func TestUnitSat2(t *testing.T) {
 		t.Errorf("Expected max_key to be 2, got %d", dpll.max_key)
 	}
 }
+
+func TestUnitUnsat1(t *testing.T) {
+	dpll := NewDPLL()
+	dpll.clauses = append(dpll.clauses, Clause{[]uint{0}})
+	dpll.clauses = append(dpll.clauses, Clause{[]uint{1}})
+	if dpll.Solve() != false {
+		t.Errorf("Expected Solve() to return false, got true")
+	}
+}

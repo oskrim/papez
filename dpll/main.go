@@ -101,6 +101,9 @@ func (dpll *DPLL) Push(variable uint) {
 }
 
 func (dpll *DPLL) Pop() {
+	if len(dpll.trail) == 0 {
+		return
+	}
 	dpll.variables[dpll.trail[len(dpll.trail)-1]] = false
 	dpll.trail = dpll.trail[:len(dpll.trail)-1]
 }
