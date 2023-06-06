@@ -56,6 +56,7 @@ func (dpll *DPLL) RegisterVariables() {
 
 func (dpll *DPLL) SolveInternal() bool {
 	if dpll.AllClausesSatisfied() {
+		debug("SAT with", dpll.trail)
 		return true
 	}
 
@@ -73,7 +74,6 @@ func (dpll *DPLL) SolveInternal() bool {
 
 		// Assign pos_lit to true
 		dpll.Push(pos_lit)
-		debug("Assigned", pos_lit, "to true")
 
 		// Recurse
 		if dpll.SolveInternal() {
@@ -82,7 +82,6 @@ func (dpll *DPLL) SolveInternal() bool {
 
 		// Try the negation of pos_lit
 		dpll.Push(neg_lit)
-		debug("Assigned", neg_lit, "to true")
 
 		// Recurse
 		if dpll.SolveInternal() {

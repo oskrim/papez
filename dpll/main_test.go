@@ -57,3 +57,34 @@ func TestUnsat1(t *testing.T) {
 		t.Errorf("Expected Solve() to return false, got true")
 	}
 }
+
+func TestSat3(t *testing.T) {
+	dpll := NewDPLL()
+	dpll.clauses = append(dpll.clauses, Clause{[]uint{0}})
+	dpll.clauses = append(dpll.clauses, Clause{[]uint{2}})
+	if dpll.Solve() != true {
+		t.Errorf("Expected Solve() to return true, got false")
+	}
+}
+
+func TestSat4(t *testing.T) {
+	dpll := NewDPLL()
+	dpll.clauses = append(dpll.clauses, Clause{[]uint{0, 2}})
+	dpll.clauses = append(dpll.clauses, Clause{[]uint{1, 2}})
+	if dpll.Solve() != true {
+		t.Errorf("Expected Solve() to return true, got false")
+	}
+	if !reflect.DeepEqual(dpll.trail, []uint{0, 2}) {
+		t.Errorf("Expected trail to be [0 2], got %v", dpll.trail)
+	}
+}
+
+func TestUnsat2(t *testing.T) {
+	dpll := NewDPLL()
+	dpll.clauses = append(dpll.clauses, Clause{[]uint{0, 2}})
+	dpll.clauses = append(dpll.clauses, Clause{[]uint{1, 2}})
+	dpll.clauses = append(dpll.clauses, Clause{[]uint{3}})
+	if dpll.Solve() != false {
+		t.Errorf("Expected Solve() to return false, got true")
+	}
+}
