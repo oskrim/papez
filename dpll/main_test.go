@@ -88,3 +88,17 @@ func TestUnsat2(t *testing.T) {
 		t.Errorf("Expected Solve() to return false, got true")
 	}
 }
+
+func TestCycleOfImplications(t *testing.T) {
+	dpll := NewDPLL()
+	for i := uint(1); i < 8; i++ {
+		lit := i * 2
+		dpll.clauses = append(dpll.clauses, Clause{[]uint{lit - 1, lit}})
+	}
+	if dpll.Solve() != true {
+		t.Errorf("Expected Solve() to return true, got false")
+	}
+	if !reflect.DeepEqual(dpll.trail, []uint{0, 2, 4, 6, 8, 10, 12, 14}) {
+		t.Errorf("Expected trail to be [0 2 4 6 8 10 12 14], got %v", dpll.trail)
+	}
+}
