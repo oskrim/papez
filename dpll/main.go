@@ -72,6 +72,7 @@ func (dpll *DPLL) SolveInternal() bool {
 	}
 
 	// Try to assign a variable to true
+	// TODO: Invent a better decision heuristic
 	for pos_lit := uint(0); pos_lit < dpll.max_key; pos_lit += 2 {
 		pos_lit_value := dpll.variables[pos_lit]
 
