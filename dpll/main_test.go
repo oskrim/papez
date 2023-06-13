@@ -13,6 +13,9 @@ func TestNoClauses(t *testing.T) {
 	if dpll.Solve() != true {
 		t.Errorf("Expected Solve() to return true, got false")
 	}
+	if dpll.iterations != 1 {
+		t.Errorf("Expected iterations to be 1, got %d", dpll.iterations)
+	}
 }
 
 func TestSat1(t *testing.T) {
@@ -30,6 +33,9 @@ func TestSat1(t *testing.T) {
 	if dpll.max_key != 2 {
 		t.Errorf("Expected max_key to be 2, got %d", dpll.max_key)
 	}
+	if dpll.iterations != 2 {
+		t.Errorf("Expected iterations to be 2, got %d", dpll.iterations)
+	}
 }
 
 func TestSat2(t *testing.T) {
@@ -46,6 +52,9 @@ func TestSat2(t *testing.T) {
 	}
 	if dpll.max_key != 2 {
 		t.Errorf("Expected max_key to be 2, got %d", dpll.max_key)
+	}
+	if dpll.iterations != 3 {
+		t.Errorf("Expected iterations to be 3, got %d", dpll.iterations)
 	}
 }
 

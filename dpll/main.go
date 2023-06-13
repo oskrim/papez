@@ -32,11 +32,14 @@ type DPLL struct {
 	trail []uint
 	// max_key is the maximum key in variables
 	max_key uint
+	// number of decisions made
+	iterations uint
 }
 
 func main() {
 	dpll := NewDPLL()
 	dpll.clauses = make([]Clause, 0)
+	dpll.iterations = 0
 }
 
 func NewDPLL() *DPLL {
@@ -64,6 +67,8 @@ func (dpll *DPLL) RegisterVariables() {
 }
 
 func (dpll *DPLL) SolveInternal() bool {
+	dpll.iterations += 1
+
 	// TODO: Implement unit propagation
 
 	if dpll.AllClausesSatisfied() {
