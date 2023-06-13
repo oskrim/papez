@@ -12,7 +12,6 @@ type Clause struct {
 	// Odd integers are negated literals
 	// Even integers are positive literals
 	literals []uint
-	// TODO: Implement two-watched literals
 	// the two literals that are being watched
 	// are positioned at indices [0, 1] of `literals`
 	// a watch literal can be true or unassigned
@@ -44,6 +43,12 @@ func main() {
 
 func NewDPLL() *DPLL {
 	return &DPLL{}
+}
+
+func (dpll *DPLL) AddClause(clause Clause) {
+	// prepend the two watch literals
+	clause.literals = append([]uint{0, 1}, clause.literals...)
+	dpll.clauses = append(dpll.clauses, clause)
 }
 
 func (dpll *DPLL) Solve() bool {
