@@ -20,7 +20,7 @@ func TestNoClauses(t *testing.T) {
 
 func TestSat1(t *testing.T) {
 	dpll := NewDPLL()
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{0}})
+	dpll.AddClause(Clause{[]uint{0}})
 	if dpll.Solve() != true {
 		t.Errorf("Expected Solve() to return true, got false")
 	}
@@ -40,12 +40,12 @@ func TestSat1(t *testing.T) {
 
 func TestSat2(t *testing.T) {
 	dpll := NewDPLL()
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{1}})
+	dpll.AddClause(Clause{[]uint{1}})
 	if dpll.Solve() != true {
 		t.Errorf("Expected Solve() to return true, got false")
 	}
 	if !reflect.DeepEqual(dpll.trail, []uint{1}) {
-		t.Errorf("Expected trail to be [0], got %v", dpll.trail)
+		t.Errorf("Expected trail to be [1], got %v", dpll.trail)
 	}
 	if dpll.variables[1] != true {
 		t.Errorf("Expected variables to be {1: true}, got %v", dpll.variables)
@@ -60,8 +60,8 @@ func TestSat2(t *testing.T) {
 
 func TestUnsat1(t *testing.T) {
 	dpll := NewDPLL()
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{0}})
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{1}})
+	dpll.AddClause(Clause{[]uint{0}})
+	dpll.AddClause(Clause{[]uint{1}})
 	if dpll.Solve() != false {
 		t.Errorf("Expected Solve() to return false, got true")
 	}
@@ -69,8 +69,8 @@ func TestUnsat1(t *testing.T) {
 
 func TestSat3(t *testing.T) {
 	dpll := NewDPLL()
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{0}})
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{2}})
+	dpll.AddClause(Clause{[]uint{0}})
+	dpll.AddClause(Clause{[]uint{2}})
 	if dpll.Solve() != true {
 		t.Errorf("Expected Solve() to return true, got false")
 	}
@@ -78,8 +78,8 @@ func TestSat3(t *testing.T) {
 
 func TestSat4(t *testing.T) {
 	dpll := NewDPLL()
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{0, 2}})
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{1, 2}})
+	dpll.AddClause(Clause{[]uint{0, 2}})
+	dpll.AddClause(Clause{[]uint{1, 2}})
 	if dpll.Solve() != true {
 		t.Errorf("Expected Solve() to return true, got false")
 	}
@@ -90,9 +90,9 @@ func TestSat4(t *testing.T) {
 
 func TestUnsat2(t *testing.T) {
 	dpll := NewDPLL()
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{0, 2}})
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{1, 2}})
-	dpll.clauses = append(dpll.clauses, Clause{[]uint{3}})
+	dpll.AddClause(Clause{[]uint{0, 2}})
+	dpll.AddClause(Clause{[]uint{1, 2}})
+	dpll.AddClause(Clause{[]uint{3}})
 	if dpll.Solve() != false {
 		t.Errorf("Expected Solve() to return false, got true")
 	}
@@ -102,7 +102,7 @@ func TestCycleOfImplications(t *testing.T) {
 	dpll := NewDPLL()
 	for i := uint(1); i < 8; i++ {
 		lit := i * 2
-		dpll.clauses = append(dpll.clauses, Clause{[]uint{lit - 1, lit}})
+		dpll.AddClause(Clause{[]uint{lit - 1, lit}})
 	}
 	if dpll.Solve() != true {
 		t.Errorf("Expected Solve() to return true, got false")

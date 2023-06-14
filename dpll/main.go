@@ -33,21 +33,37 @@ type DPLL struct {
 	max_key uint
 	// number of decisions made
 	iterations uint
+	// map literals -> clauses
+	lit_to_clauses map[uint][]uint
 }
 
 func main() {
-	dpll := NewDPLL()
-	dpll.clauses = make([]Clause, 0)
-	dpll.iterations = 0
+	fmt.Println("main")
 }
 
 func NewDPLL() *DPLL {
-	return &DPLL{}
+	dpll := DPLL{}
+	dpll.clauses = make([]Clause, 0)
+	dpll.lit_to_clauses = make(map[uint][]uint)
+	dpll.iterations = 0
+	return &dpll
 }
 
 func (dpll *DPLL) AddClause(clause Clause) {
-	// prepend the two watch literals
-	clause.literals = append([]uint{0, 1}, clause.literals...)
+	clause_len := uint(len(clause.literals))
+	if clause_len == 0 {
+		return
+	}
+
+	// build lit_to_clauses lookup table
+	num_clauses := uint(len(dpll.clauses))
+	for _, lit := range clause.literals {
+		dpll.lit_to_clauses[lit] = append(dpll.lit_to_clauses[lit], num_clauses)
+	}
+
+	// prepend watch literals
+	clause.literals = append([]uint{0, clause_len - 1}, clause.literals...)
+
 	dpll.clauses = append(dpll.clauses, clause)
 }
 
@@ -82,7 +98,7 @@ func (dpll *DPLL) SolveInternal() bool {
 	}
 
 	// Try to assign a variable to true
-	// TODO: Invent a better decision heuristic
+	// TODO: Invent a better decision heuristic (VSIDS?)
 	for pos_lit := uint(0); pos_lit < dpll.max_key; pos_lit += 2 {
 		pos_lit_value := dpll.variables[pos_lit]
 
@@ -139,7 +155,7 @@ func (dpll *DPLL) AllClausesSatisfied() bool {
 }
 
 func (dpll *DPLL) ClauseSatisfied(clause Clause) bool {
-	for _, literal := range clause.literals {
+	for _, literal := range clause.literals[2:] {
 		if dpll.variables[literal] {
 			return true
 		}
