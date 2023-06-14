@@ -1,5 +1,6 @@
 // This is an implementation of the Davis-Putnam-Logemann-Loveland (DPLL) algorithm.
 // TODO: uint maps could be arrays?
+// TODO: run against real sat benchmarks
 
 package main
 
