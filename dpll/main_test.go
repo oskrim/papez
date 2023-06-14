@@ -13,8 +13,8 @@ func TestNoClauses(t *testing.T) {
 	if dpll.Solve() != true {
 		t.Errorf("Expected Solve() to return true, got false")
 	}
-	if dpll.iterations != 1 {
-		t.Errorf("Expected iterations to be 1, got %d", dpll.iterations)
+	if dpll.lvl != 0 {
+		t.Errorf("Expected lvl to be 0, got %d", dpll.lvl)
 	}
 }
 
@@ -33,8 +33,8 @@ func TestSat1(t *testing.T) {
 	if dpll.max_key != 2 {
 		t.Errorf("Expected max_key to be 2, got %d", dpll.max_key)
 	}
-	if dpll.iterations != 2 {
-		t.Errorf("Expected iterations to be 2, got %d", dpll.iterations)
+	if dpll.lvl != 0 {
+		t.Errorf("Expected lvl to be 0, got %d", dpll.lvl)
 	}
 }
 
@@ -53,8 +53,8 @@ func TestSat2(t *testing.T) {
 	if dpll.max_key != 2 {
 		t.Errorf("Expected max_key to be 2, got %d", dpll.max_key)
 	}
-	if dpll.iterations != 3 {
-		t.Errorf("Expected iterations to be 3, got %d", dpll.iterations)
+	if dpll.lvl != 0 {
+		t.Errorf("Expected lvl to be 0, got %d", dpll.lvl)
 	}
 }
 
@@ -109,5 +109,8 @@ func TestCycleOfImplications(t *testing.T) {
 	}
 	if !reflect.DeepEqual(dpll.trail, []uint{0, 2, 4, 6, 8, 10, 12, 14}) {
 		t.Errorf("Expected trail to be [0 2 4 6 8 10 12 14], got %v", dpll.trail)
+	}
+	if dpll.lvl != 8 {
+		t.Errorf("Expected lvl to be 8, got %d", dpll.lvl)
 	}
 }

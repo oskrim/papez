@@ -1,4 +1,5 @@
 // This is an implementation of the Davis-Putnam-Logemann-Loveland (DPLL) algorithm.
+// TODO: uint maps could be arrays?
 
 package main
 
@@ -22,6 +23,10 @@ type Clause struct {
 	// (both watches are false)
 }
 
+func (clause *Clause) IsUnit() bool {
+	return len(clause.literals) == 3
+}
+
 type DPLL struct {
 	// Set of boolean clauses
 	clauses []Clause
@@ -29,12 +34,14 @@ type DPLL struct {
 	variables map[uint]bool
 	// Set of assignments
 	trail []uint
+	// decision levels of trail
+	dl []uint
+	// decision level
+	lvl uint
 	// max_key is the maximum key in variables
 	max_key uint
-	// number of decisions made
-	iterations uint
 	// map literals -> clauses
-	lit_to_clauses map[uint][]uint
+	lit_to_clauses map[uint]([]uint)
 }
 
 func main() {
@@ -45,7 +52,7 @@ func NewDPLL() *DPLL {
 	dpll := DPLL{}
 	dpll.clauses = make([]Clause, 0)
 	dpll.lit_to_clauses = make(map[uint][]uint)
-	dpll.iterations = 0
+	dpll.lvl = 0
 	return &dpll
 }
 
@@ -62,36 +69,40 @@ func (dpll *DPLL) AddClause(clause Clause) {
 	}
 
 	// prepend watch literals
-	clause.literals = append([]uint{0, clause_len - 1}, clause.literals...)
+	clause.literals = append([]uint{2, 2 + clause_len - 1}, clause.literals...)
 
 	dpll.clauses = append(dpll.clauses, clause)
 }
 
 func (dpll *DPLL) Solve() bool {
+	debug()
 	dpll.RegisterVariables()
+	dpll.InitialUnitPropagate()
 	return dpll.SolveInternal()
 }
 
 func (dpll *DPLL) RegisterVariables() {
 	dpll.variables = make(map[uint]bool)
 	dpll.max_key = 0
-	for _, clause := range dpll.clauses {
-		for _, literal := range clause.literals {
-			dpll.variables[literal] = false
-			if literal > dpll.max_key {
-				dpll.max_key = literal
-			}
+	for literal, _ := range dpll.lit_to_clauses {
+		dpll.variables[literal] = false
+		if literal > dpll.max_key {
+			dpll.max_key = literal
 		}
 	}
 	dpll.max_key -= (dpll.max_key & 1)
 	dpll.max_key += 2
 }
 
+func (dpll *DPLL) InitialUnitPropagate() {
+	for _, clause := range dpll.clauses {
+		if clause.IsUnit() {
+			dpll.Push(clause.literals[2])
+		}
+	}
+}
+
 func (dpll *DPLL) SolveInternal() bool {
-	dpll.iterations += 1
-
-	// TODO: Implement unit propagation
-
 	if dpll.AllClausesSatisfied() {
 		debug("SAT with", dpll.trail)
 		return true
@@ -111,15 +122,11 @@ func (dpll *DPLL) SolveInternal() bool {
 		}
 
 		// Assign pos_lit to true
-		dpll.Push(pos_lit)
-
-		// Recurse
-		if dpll.SolveInternal() {
-			return true
+		if !dpll.Decide(pos_lit) {
+			if !dpll.Decide(neg_lit) {
+				continue
+			}
 		}
-
-		// Try the negation of pos_lit
-		dpll.Push(neg_lit)
 
 		// Recurse
 		if dpll.SolveInternal() {
@@ -127,22 +134,94 @@ func (dpll *DPLL) SolveInternal() bool {
 		}
 	}
 
-	dpll.Pop()
-
 	return false
 }
 
-func (dpll *DPLL) Push(variable uint) {
-	dpll.variables[variable] = true
+func (dpll *DPLL) Decide(variable uint) bool {
+	dpll.lvl += 1
+	if !dpll.Push(variable) {
+		dpll.Pop()
+		return false
+	}
+	return true
+}
+
+func (dpll *DPLL) Push(variable uint) bool {
+	debug("pushing", variable)
+
+	if dpll.variables[variable ^ 1] == true {
+		debug("conflict", variable)
+		return false
+	}
+
 	dpll.trail = append(dpll.trail, variable)
+	dpll.dl = append(dpll.dl, dpll.lvl)
+
+	dpll.variables[variable] = true
+	return dpll.UnitPropagate(variable)
+}
+
+func (dpll *DPLL) UnitPropagate(lit uint) bool {
+	debug("propagate", lit)
+
+	for _, idx := range dpll.lit_to_clauses[lit] {
+		clause := dpll.clauses[idx]
+		w0 := clause.literals[0]
+		w1 := clause.literals[1]
+
+		// which watch literal is it?
+		w := 0
+		if clause.literals[w0] == lit {
+			w = 0
+		} else if clause.literals[w1] == lit {
+			w = 1
+		} else {
+			return true
+		}
+
+		for ji, lit := range clause.literals[2:] {
+			j := uint(ji) // TODO: how to iterate in uint and avoid this cast?
+			if j == w0 || j == w1 || dpll.variables[lit ^ 1] == true {
+				continue
+			}
+
+			// found a new watch literal
+			clause.literals[w] = j
+			return true
+		}
+
+		// cant find a new watch literal
+		other := clause.literals[w1]
+		if w == 0 {
+			other = clause.literals[w0]
+		}
+		// assert not false
+		if dpll.variables[other ^ 1] == true {
+			panic("UnitPropagate: other watch literal cannot be false")
+		}
+		if dpll.variables[other] == true {
+			// already assigned, nothing left to do
+			return true
+		} else {
+			if !dpll.Push(other) {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func (dpll *DPLL) Pop() {
 	if len(dpll.trail) == 0 {
 		return
 	}
-	dpll.variables[dpll.trail[len(dpll.trail)-1]] = false
-	dpll.trail = dpll.trail[:len(dpll.trail)-1]
+	dpll.lvl -= 1
+	for dpll.dl[len(dpll.trail)-1] != dpll.lvl {
+		dpll.variables[dpll.trail[len(dpll.trail)-1]] = false
+		dpll.trail = dpll.trail[:len(dpll.trail)-1]
+		dpll.dl = dpll.dl[:len(dpll.dl)-1]
+	}
 }
 
 func (dpll *DPLL) AllClausesSatisfied() bool {
@@ -156,7 +235,7 @@ func (dpll *DPLL) AllClausesSatisfied() bool {
 
 func (dpll *DPLL) ClauseSatisfied(clause Clause) bool {
 	for _, literal := range clause.literals[2:] {
-		if dpll.variables[literal] {
+		if dpll.variables[literal] == true {
 			return true
 		}
 	}
