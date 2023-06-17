@@ -124,6 +124,7 @@ func (dpll *DPLL) SolveInternal() bool {
 
 		// Assign pos_lit to true
 		if !dpll.Decide(pos_lit) {
+			// Assign neg_lit to true
 			if !dpll.Decide(neg_lit) {
 				continue
 			}
