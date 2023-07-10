@@ -1,5 +1,7 @@
 On a Raspberry Pi (`192.168.2.152`)
 ```
+sudo iptables -I OUTPUT -p tcp --tcp-flags ALL RST,ACK -j DROP
+sudo iptables -I OUTPUT -p tcp --tcp-flags ALL RST -j DROP
 sudo python3 l2_http_server.py
 ```
 
