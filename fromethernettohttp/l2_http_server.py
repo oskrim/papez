@@ -15,7 +15,6 @@ s.bind((interface, 0))
 
 
 def get_checksum(data):
-    # if the total length is odd, pad with zeros
     if len(data) & 1:
         data += b'\x00'
 
@@ -52,7 +51,6 @@ def send_tcp(r, data, flags):
     checksum = get_checksum(pseudo_header + tcp_header + data)
     tcp_header = struct.pack('!HHLLBBHHH', src_port, dst_port, seq, ack, offset, flags, window, checksum, urgent_pointer)
 
-    # 4510 0080 48eb 4000 40 06 6b60 c0a80298 c0a80234
     ip_header = bytearray(ip[:5*4])
     ip_header[2:4]   = struct.pack('!H', len(ip_header) + tcp_length)
     ip_header[4:6]   = struct.pack('!H', ip_id & 0xffff)
@@ -113,7 +111,6 @@ def parse_tcp(tcp, r):
     dst_port = struct.unpack("!H", tcp[2:4])[0]
 
     if dst_port != 8080:
-        # print(f"port {dst_port} != 8080")
         return
 
     test_checksum(tcp, r[14:])
@@ -138,7 +135,6 @@ def parse_tcp(tcp, r):
     elif fin:
         ack = seq_num + 1
         send_ack(r)
-        # send_fin(r)
     else:
         data = tcp[offset*4:]
         if len(data):
@@ -159,10 +155,7 @@ def parse_ip(ip, r):
     protocol = ip[9]
     payload = ip[ihl*4:]
 
-    # print(f"version {version} ihl {ihl} length {length} protocol {protocol}")
-
     if protocol != 6:
-        # print(f"want tcp(6), was {protocol}, skipping")
         return
 
     if length != len(ip):
@@ -179,8 +172,6 @@ def parse_eth(r):
     src = r[6:12].hex()
     ethertype = r[12:14].hex()
     ip = r[14:]
-
-    # print(f"len {len(r)} dst {dst} src {src} ethertype {ethertype}")
 
     return parse_ip(ip, r)
 
