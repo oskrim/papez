@@ -9,6 +9,6 @@ const trpc = createTRPCProxyClient<AppRouter>({
 });
 
 (async () => {
-  const user = await trpc.userById.query('1');
+  const user = await trpc.userById.query({ id: '1' });
   console.log('user', user);
 })();

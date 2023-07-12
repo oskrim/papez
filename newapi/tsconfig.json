@@ -19,6 +19,6 @@
     "forceConsistentCasingInFileNames": true,
     "strictPropertyInitialization": false,
     "skipLibCheck": true,
-    "lib": ["esnext", "ESNext.AsyncIterable"]
+    "lib": ["dom", "esnext", "ESNext.AsyncIterable"]
   }
 }

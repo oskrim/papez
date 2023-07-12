@@ -1,16 +1,11 @@
-// type User = { id: string; name: string; };
-
-// userList: () => User[];
-// userById: (id: string) => User;
-// userCreate: (data: { name: string }) => User;
-
 import { initTRPC } from '@trpc/server';
+import { OpenApiMeta } from "trpc-openapi"
  
 /**
  * Initialization of tRPC backend
  * Should be done only once per backend!
  */
-const t = initTRPC.create();
+const t = initTRPC.meta<OpenApiMeta>().create();
  
 /**
  * Export reusable router and procedure helpers
@@ -34,13 +29,25 @@ import { z } from 'zod';
 
 const appRouter = router({
   userById: publicProcedure
-    .input(z.string())
+    .meta({ openapi: { method: 'GET', path: '/user' } })
+    .input(z.object({ id: z.string() }))
+    .output(z.object({ id: z.string(), name: z.string() }))
     .query(async (opts) => {
       const { input } = opts;
-      const user = await db.user.findById(input);
+      const user = await db.user.findById(input.id);
       return user;
     }),
 });
+
+import { generateOpenApiDocument } from 'trpc-openapi';
+
+const doc = generateOpenApiDocument(appRouter, {
+  title: 'My API',
+  version: '0.1.0',
+  description: 'My API description',
+  baseUrl: 'http://localhost:3000',
+});
+console.log(JSON.stringify(doc, null, 2));
 
 // Export type router type signature,
 // NOT the router itself.
