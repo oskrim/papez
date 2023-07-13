@@ -204,6 +204,17 @@ mod tests {
         let result = eval(env.clone(), y);
         assert_eq!(result, Rc::new(Value::Neutral(Rc::new(Neutral::Var("y".to_string())))));
     }
+
+    #[test]
+    fn test_veq() {
+        let u = Rc::new(Value::Nat);
+        let v = Rc::new(Value::Nat);
+        assert!(veq(0, u, v));
+
+        let u = Rc::new(Value::Succ(Rc::new(Value::Zero)));
+        let v = eval(HashTrieMap::new(), Rc::new(Expr::Succ(Rc::new(Expr::Zero))));
+        assert!(veq(0, u, v));
+    }
 }
 
 fn main() {
