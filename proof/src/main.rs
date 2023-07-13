@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::collections::HashMap;
 use rpds::HashTrieMap;
@@ -57,5 +56,22 @@ fn eval(env: &'static mut HashMap<String, Rc<Value>>, t: Rc<Expr>) -> Rc<Value> 
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_vapp() {
+        let f = Value::VAbs(Rc::new(|x| x));
+        let v = Value::VNat;
+        let result = vapp(f, v);
+        match result {
+            Value::VNat => (),
+            _ => panic!("test_vapp"),
+        }
+    }
+}
+
 fn main() {
+    println!("main")
 }
