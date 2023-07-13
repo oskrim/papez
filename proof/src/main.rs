@@ -1,6 +1,7 @@
 use rpds::HashTrieMap;
 use std::rc::Rc;
 
+#[derive(PartialEq, Debug)]
 enum Expr {
     Var(String),
     Abs(String, Rc<Expr>),
@@ -16,6 +17,7 @@ enum Expr {
     J(Rc<Expr>, Rc<Expr>, Rc<Expr>, Rc<Expr>, Rc<Expr>, Rc<Expr>),
 }
 
+#[derive(PartialEq, Debug)]
 enum Neutral {
     Var(String),
     App(Rc<Neutral>, Rc<Value>),
@@ -30,6 +32,7 @@ enum Neutral {
     ),
 }
 
+#[derive(PartialEq, Debug)]
 enum Value {
     Abs(HashTrieMap<String, Rc<Value>>, String, Rc<Expr>),
     Pi(Rc<Value>, Rc<Value>),
@@ -169,6 +172,10 @@ fn readback(k: usize, v: Rc<Value>) -> Rc<Expr> {
     }
 }
 
+fn veq(k: usize, u: Rc<Value>, v: Rc<Value>) -> bool {
+    readback(k, u) == readback(k, v)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,10 +189,7 @@ mod tests {
         );
         let v = Value::Nat;
         let result = vapp(Rc::new(f), Rc::new(v));
-        match result.as_ref() {
-            Value::Nat => (),
-            _ => panic!("test_vapp"),
-        }
+        assert_eq!(result, Rc::new(Value::Nat));
     }
 
     #[test]
@@ -194,17 +198,11 @@ mod tests {
 
         let x = Rc::new(Expr::Var("x".to_string()));
         let result = eval(env.clone(), x);
-        match result.as_ref() {
-            Value::Nat => (),
-            _ => panic!("test_eval x"),
-        }
+        assert_eq!(*result.as_ref(), Value::Nat);
 
         let y = Rc::new(Expr::Var("y".to_string()));
         let result = eval(env.clone(), y);
-        match result.as_ref() {
-            Value::Neutral(_) => (),
-            _ => panic!("test_eval y"),
-        }
+        assert_eq!(result, Rc::new(Value::Neutral(Rc::new(Neutral::Var("y".to_string())))));
     }
 }
 
