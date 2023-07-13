@@ -44,7 +44,7 @@ fn vapp(u: Value, v: Value) -> Value {
     }
 }
 
-fn eval(env: &'static mut HashMap<String, Rc<Value>>, t: Rc<Expr>) -> Rc<Value> {
+fn eval(env: &HashMap<String, Rc<Value>>, t: Rc<Expr>) -> Rc<Value> {
     match t.as_ref() {
         Expr::Var(x) => {
             match env.get(x) {
@@ -68,6 +68,26 @@ mod tests {
         match result {
             Value::VNat => (),
             _ => panic!("test_vapp"),
+        }
+    }
+
+    #[test]
+    fn test_eval() {
+        let mut env = HashMap::new();
+        env.insert("x".to_string(), Rc::new(Value::VNat));
+
+        let x = Rc::new(Expr::Var("x".to_string()));
+        let result = eval(&env, x);
+        match result.as_ref() {
+            Value::VNat => (),
+            _ => panic!("test_eval x"),
+        }
+
+        let y = Rc::new(Expr::Var("y".to_string()));
+        let result = eval(&env, y);
+        match result.as_ref() {
+            Value::VNeutral(_) => (),
+            _ => panic!("test_eval y"),
         }
     }
 }
