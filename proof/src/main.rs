@@ -63,6 +63,12 @@ fn f(k: Rc<Value>, a: Rc<Value>, z: Rc<Value>, s: Rc<Value>) -> Rc<Value> {
             vapp(Rc::clone(&s), Rc::clone(&l)),
             f(Rc::clone(&l), a, z, s),
         ),
+        Value::Neutral(n) => Rc::new(Value::Neutral(Rc::new(Neutral::Ind(
+            Rc::clone(n),
+            a,
+            z,
+            s,
+        )))),
         _ => panic!("Ind"),
     }
 }
