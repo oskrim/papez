@@ -5,52 +5,52 @@ use rpds::HashTrieMap;
 
 enum Expr {
     Var(String),
-    Abs(String, Rc<RefCell<Expr>>),
-    App(Rc<RefCell<Expr>>, Rc<RefCell<Expr>>),
-    Pi(String, Rc<RefCell<Expr>>, Rc<RefCell<Expr>>),
+    Abs(String, Rc<Expr>),
+    App(Rc<Expr>, Rc<Expr>),
+    Pi(String, Rc<Expr>, Rc<Expr>),
     Type(usize),
     Nat,
     Zero,
-    Succ(Rc<RefCell<Expr>>),
-    Ind(Rc<RefCell<Expr>>, Rc<RefCell<Expr>>, Rc<RefCell<Expr>>),
-    Id(Rc<RefCell<Expr>>, Rc<RefCell<Expr>>, Rc<RefCell<Expr>>),
-    Refl(Rc<RefCell<Expr>>),
-    J(Rc<RefCell<Expr>>, Rc<RefCell<Expr>>, Rc<RefCell<Expr>>, Rc<RefCell<Expr>>, Rc<RefCell<Expr>>, Rc<RefCell<Expr>>),
+    Succ(Rc<Expr>),
+    Ind(Rc<Expr>, Rc<Expr>, Rc<Expr>),
+    Id(Rc<Expr>, Rc<Expr>, Rc<Expr>),
+    Refl(Rc<Expr>),
+    J(Rc<Expr>, Rc<Expr>, Rc<Expr>, Rc<Expr>, Rc<Expr>, Rc<Expr>),
 }
 
 enum Neutral {
     NVar(String),
-    NApp(Rc<RefCell<Neutral>>, Value),
-    NInd(Rc<RefCell<Neutral>>, Value, Value, Value),
-    NJ(Value, Value, Value, Value, Value, Rc<RefCell<Neutral>>),
+    NApp(Rc<Neutral>, Value),
+    NInd(Rc<Neutral>, Value, Value, Value),
+    NJ(Value, Value, Value, Value, Value, Rc<Neutral>),
 }
 
 enum Value {
     VAbs(Rc<dyn Fn(Value) -> Value>),
-    VPi(Rc<RefCell<Value>>, Rc<dyn Fn(Value) -> Value>),
+    VPi(Rc<Value>, Rc<dyn Fn(Value) -> Value>),
     VType(usize),
     VNat,
     VZero,
-    VSucc(Rc<RefCell<Value>>),
-    VId(Rc<RefCell<Value>>, Rc<RefCell<Value>>, Rc<RefCell<Value>>),
-    VRefl(Rc<RefCell<Value>>),
-    VNeutral(Rc<RefCell<Neutral>>),
+    VSucc(Rc<Value>),
+    VId(Rc<Value>, Rc<Value>, Rc<Value>),
+    VRefl(Rc<Value>),
+    VNeutral(Rc<Neutral>),
 }
 
 fn vapp(u: Value, v: Value) -> Value {
     match u {
         Value::VAbs(f) => f(v),
-        Value::VNeutral(n) => Value::VNeutral(Rc::new(RefCell::new(Neutral::NApp(n, v)))),
+        Value::VNeutral(n) => Value::VNeutral(Rc::new(Neutral::NApp(n, v))),
         _ => panic!("vapp"),
     }
 }
 
-fn eval(env: &'static mut HashMap<String, Rc<RefCell<Value>>>, t: Rc<RefCell<Expr>>) -> Rc<RefCell<Value>> {
-    match &*t.borrow() {
+fn eval(env: &'static mut HashMap<String, Rc<Value>>, t: Rc<Expr>) -> Rc<Value> {
+    match t.as_ref() {
         Expr::Var(x) => {
             match env.get(x) {
                 Some(v) => Rc::clone(v),
-                None => Rc::new(RefCell::new(Value::VNeutral(Rc::new(RefCell::new(Neutral::NVar(x.to_string()))))))
+                None => Rc::new(Value::VNeutral(Rc::new(Neutral::NVar(x.to_string()))))
             }
         },
         _ => panic!("eval"),
