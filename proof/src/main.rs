@@ -19,13 +19,13 @@ enum Expr {
 enum Neutral {
     Var(String),
     App(Rc<Neutral>, Rc<Value>),
-    Ind(Rc<Neutral>, Value, Value, Value),
+    Ind(Rc<Neutral>, Rc<Value>, Rc<Value>, Rc<Value>),
     J(Rc<Value>, Rc<Value>, Rc<Value>, Rc<Value>, Rc<Value>, Rc<Neutral>),
 }
 
 enum Value {
     Abs(HashTrieMap<String, Rc<Value>>, String, Rc<Expr>),
-    Pi(Rc<Value>, HashTrieMap<String, Rc<Value>>, String, Rc<Expr>),
+    Pi(Rc<Value>, Rc<Value>),
     Type(usize),
     Nat,
     Zero,
@@ -62,7 +62,10 @@ fn eval(env: HashTrieMap<String, Rc<Value>>, t: Rc<Expr>) -> Rc<Value> {
         },
         Expr::Abs(x, e) => Rc::new(Value::Abs(env, x.to_string(), e.clone())),
         Expr::App(e1, e2) => vapp(eval(env.clone(), e1.clone()), eval(env, e2.clone())),
-        Expr::Pi(x, a, e) => Rc::new(Value::Pi(eval(env.clone(), a.clone()), env, x.to_string(), e.clone())),
+        Expr::Pi(x, a, e) => {
+            let e2 = Rc::new(Value::Abs(env.clone(), x.to_string(), e.clone()));
+            Rc::new(Value::Pi(eval(env, a.clone()), e2))
+        },
         Expr::Type(n) => Rc::new(Value::Type(*n)),
         Expr::Nat => Rc::new(Value::Nat),
         Expr::Zero => Rc::new(Value::Zero),
@@ -95,6 +98,61 @@ fn eval(env: HashTrieMap<String, Rc<Value>>, t: Rc<Expr>) -> Rc<Value> {
             )))),
             _ => panic!("J"),
         }
+    }
+}
+
+fn neutral(k: usize, n: Rc<Neutral>) -> Rc<Expr> {
+    match n.as_ref() {
+        Neutral::Var(x) => Rc::new(Expr::Var(x.to_string())),
+        Neutral::App(u, v) => Rc::new(Expr::App(neutral(k, Rc::clone(&u)), readback(k, Rc::clone(&v)))),
+        Neutral::Ind(n, a, z, s) => Rc::new(Expr::Ind(
+            neutral(k, Rc::clone(&n)),
+            readback(k, Rc::clone(&a)),
+            readback(k, Rc::clone(&z)),
+            readback(k, Rc::clone(&s)),
+        )),
+        Neutral::J(a, p, r, t, u, e) => Rc::new(Expr::J(
+            readback(k, Rc::clone(&a)),
+            readback(k, Rc::clone(&p)),
+            readback(k, Rc::clone(&r)),
+            readback(k, Rc::clone(&t)),
+            readback(k, Rc::clone(&u)),
+            neutral(k, Rc::clone(&e)),
+        )),
+    }
+}
+
+fn fresh(k: usize) -> String {
+    format!("@{}", k)
+}
+
+fn readback(k: usize, v: Rc<Value>) -> Rc<Expr> {
+    match v.as_ref() {
+        Value::Abs(env, x, e) => {
+            let y = fresh(k);
+            let ny = Rc::new(Value::Neutral(Rc::new(Neutral::Var(y))));
+            let env2 = env.insert(x.to_string(), ny);
+            let result = eval(env2, Rc::clone(&e));
+            Rc::new(Expr::Abs(x.to_string(), readback(k + 1, result)))
+        },
+        Value::Pi(a, b) => {
+            let x = fresh(k);
+            let y = readback(k, a.clone());
+            let arg = Rc::new(Value::Neutral(Rc::new(Neutral::Var(x.to_string()))));
+            let z = readback(k + 1, vapp(Rc::clone(&b), arg));
+            Rc::new(Expr::Pi(x.to_string(), y, z))
+        },
+        Value::Type(i) => Rc::new(Expr::Type(*i)),
+        Value::Nat => Rc::new(Expr::Nat),
+        Value::Zero => Rc::new(Expr::Zero),
+        Value::Succ(n) => Rc::new(Expr::Succ(readback(k, Rc::clone(&n)))),
+        Value::Id(a, t, u) => Rc::new(Expr::Id(
+            readback(k, Rc::clone(&a)),
+            readback(k, Rc::clone(&t)),
+            readback(k, Rc::clone(&u)),
+        )),
+        Value::Refl(t) => Rc::new(Expr::Refl(readback(k, Rc::clone(&t)))),
+        Value::Neutral(t) => neutral(k, t.clone()),
     }
 }
 
