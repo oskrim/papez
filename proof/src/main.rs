@@ -1,7 +1,7 @@
 use rpds::HashTrieMap;
 use std::rc::Rc;
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug, PartialEq)]
 enum Expr {
     Var(String),
     Abs(String, Rc<Expr>),
@@ -17,7 +17,6 @@ enum Expr {
     J(Rc<Expr>, Rc<Expr>, Rc<Expr>, Rc<Expr>, Rc<Expr>, Rc<Expr>),
 }
 
-#[derive(PartialEq, Debug)]
 enum Neutral {
     Var(String),
     App(Rc<Neutral>, Rc<Value>),
@@ -32,10 +31,9 @@ enum Neutral {
     ),
 }
 
-#[derive(PartialEq, Debug)]
 enum Value {
     Abs(HashTrieMap<String, Rc<Value>>, String, Rc<Expr>),
-    Pi(Rc<Value>, Rc<Value>),
+    Pi(Rc<Value>, Rc<dyn FnOnce(Rc<Value>) -> Rc<Value>>),
     Type(usize),
     Nat,
     Zero,
@@ -82,8 +80,11 @@ fn eval(env: HashTrieMap<String, Rc<Value>>, t: Rc<Expr>) -> Rc<Value> {
         Expr::Abs(x, e) => Rc::new(Value::Abs(env, x.to_string(), e.clone())),
         Expr::App(e1, e2) => vapp(eval(env.clone(), e1.clone()), eval(env, e2.clone())),
         Expr::Pi(x, a, e) => {
-            let e2 = Rc::new(Value::Abs(env.clone(), x.to_string(), e.clone()));
-            Rc::new(Value::Pi(eval(env, a.clone()), e2))
+            let env2 = env.clone();
+            let e2 = e.clone();
+            let x2 = x.to_string();
+            let f = move |v| eval(env2.insert(x2, Rc::clone(&v)), e2);
+            Rc::new(Value::Pi(eval(env, a.clone()), Rc::new(f)))
         }
         Expr::Type(n) => Rc::new(Value::Type(*n)),
         Expr::Nat => Rc::new(Value::Nat),
@@ -161,7 +162,7 @@ fn readback(k: usize, v: Rc<Value>) -> Rc<Expr> {
             let x = fresh(k);
             let y = readback(k, a.clone());
             let arg = Rc::new(Value::Neutral(Rc::new(Neutral::Var(x.to_string()))));
-            let z = readback(k + 1, vapp(Rc::clone(&b), arg));
+            let z = readback(k + 1, b(arg));
             Rc::new(Expr::Pi(x.to_string(), y, z))
         }
         Value::Type(i) => Rc::new(Expr::Type(*i)),
@@ -182,6 +183,93 @@ fn veq(k: usize, u: Rc<Value>, v: Rc<Value>) -> bool {
     readback(k, u) == readback(k, v)
 }
 
+fn check(k: usize, tenv: HashTrieMap<String, Rc<Value>>, env: HashTrieMap<String, Rc<Value>>, t: Rc<Expr>, a: Rc<Value>) {
+    match (t.as_ref(), a.as_ref()) {
+        (Expr::Abs(x, t), Value::Pi(a, b)) => {
+            let y = fresh(k);
+            let ny = Rc::new(Value::Neutral(Rc::new(Neutral::Var(y))));
+            let tenv2 = tenv.insert(x.to_string(), Rc::clone(&a));
+            let env2 = env.insert(x.to_string(), Rc::clone(&ny));
+            check(k + 1, tenv2, env2, t.clone(), b(ny));
+        }
+        (Expr::Refl(t), Value::Id(_, u, v)) => {
+            let t2 = eval(env.clone(), t.clone());
+            if !veq(k, t2.clone(), Rc::clone(&u)) {
+                panic!("type error");
+            }
+            if !veq(k, t2, Rc::clone(&v)) {
+                panic!("type error");
+            }
+        },
+        (_, _) => {
+            let a2 = infer(k, tenv, env, t);
+            if !veq(k, a2, a) {
+                panic!("type error");
+            }
+        }
+        _ => panic!("check"),
+    }
+}
+
+fn universe(k: usize, tenv: HashTrieMap<String, Rc<Value>>, env: HashTrieMap<String, Rc<Value>>, t: Rc<Expr>) -> usize {
+    match infer(k, tenv, env, t).as_ref() {
+        Value::Type(i) => *i,
+        _ => panic!("universe type error"),
+    }
+}
+
+fn varr (a: Rc<Value>, b: Rc<Value>) -> Rc<Value> {
+    Rc::new(Value::Pi(a, Rc::new(move |_| Rc::clone(&b))))
+}
+
+fn infer(k: usize, tenv: HashTrieMap<String, Rc<Value>>, env: HashTrieMap<String, Rc<Value>>, t: Rc<Expr>) -> Rc<Value> {
+    match t.as_ref() {
+        Expr::Var(x) => match env.get(x) {
+            Some(v) => Rc::clone(v),
+            None => panic!("unbound variable"),
+        },
+        Expr::App(t, u) => match infer(k, tenv.clone(), env.clone(), t.clone()).as_ref() {
+            Value::Pi(a, b) => {
+                check(k, tenv.clone(), env.clone(), u.clone(), a.clone());
+                let u2 = eval(env.clone(), u.clone());
+                b(u2)
+            }
+            _ => panic!("infer"),
+        },
+        Expr::Pi(x, a, b) => {
+            let i = universe(k, tenv.clone(), env.clone(), a.clone());
+            let a = eval(env.clone(), a.clone());
+            let j = universe(k, tenv.insert(x.to_string(), Rc::clone(&a)), env, b.clone());
+            Rc::new(Value::Type(std::cmp::max(i, j)))
+        }
+        Expr::Type(i) => Rc::new(Value::Type(*i + 1)),
+        Expr::Nat => Rc::new(Value::Type(0)),
+        Expr::Zero => Rc::new(Value::Nat),
+        Expr::Succ(t) => {
+            check(k, tenv.clone(), env.clone(), t.clone(), Rc::new(Value::Nat));
+            Rc::new(Value::Nat)
+        }
+        Expr::Ind(n, a, z, s) => {
+            check(k, tenv.clone(), env.clone(), n.clone(), Rc::new(Value::Nat));
+            match eval(env.clone(), a.clone()).as_ref() {
+                Value::Pi(vnat, a) => {
+                    match vnat.as_ref() {
+                        Value::Nat => {
+                            let n = eval(env.clone(), n.clone());
+                            check(k, tenv.clone(), env.clone(), z.clone(), a(Rc::new(Value::Zero)));
+                            check(k, tenv.clone(), env.clone(), s.clone(), varr(a(n.clone()), a(Rc::new(Value::Succ(n.clone())))));
+                            a(n)
+                        },
+                        _ => panic!("type error ind"),
+                    }
+                },
+                _ => panic!("type error ind"),
+            }
+        }
+        _ => panic!("infer"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -195,7 +283,13 @@ mod tests {
         );
         let v = Value::Nat;
         let result = vapp(Rc::new(f), Rc::new(v));
-        assert_eq!(result, Rc::new(Value::Nat));
+        match result.as_ref() {
+            Value::Neutral(n) => match n.as_ref() {
+                Neutral::Var(x) => assert_eq!(x, "x"),
+                _ => panic!("vapp"),
+            },
+            _ => panic!("vapp"),
+        }
     }
 
     #[test]
@@ -204,11 +298,20 @@ mod tests {
 
         let x = Rc::new(Expr::Var("x".to_string()));
         let result = eval(env.clone(), x);
-        assert_eq!(*result.as_ref(), Value::Nat);
+        match result.as_ref() {
+            Value::Nat => (),
+            _ => panic!("eval"),
+        }
 
         let y = Rc::new(Expr::Var("y".to_string()));
         let result = eval(env.clone(), y);
-        assert_eq!(result, Rc::new(Value::Neutral(Rc::new(Neutral::Var("y".to_string())))));
+        match result.as_ref() {
+            Value::Neutral(n) => match n.as_ref() {
+                Neutral::Var(x) => assert_eq!(x, "y"),
+                _ => panic!("eval"),
+            },
+            _ => panic!("eval"),
+        }
     }
 
     #[test]
